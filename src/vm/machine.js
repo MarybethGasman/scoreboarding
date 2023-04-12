@@ -233,6 +233,9 @@ export function execute() {
     }).filter(v => v >= 0)
 
     set.forEach(i => {
+        if(iStatePendingJob.map(v => v.iindex).includes(i)) {
+            return
+        }
         const [op, dst, src1, src2] = instructions[i].split(' ')
         istates[i] = 3
         iStatePendingJob.push({
