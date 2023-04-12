@@ -58,10 +58,13 @@ const nextCycle = () => {
 <template>
   <div>
     <div class="text-center text-xl">当前是第 {{ cycleView }} 个周期 <button @click="nextCycle">下一步</button> <button
-        @click="prevCycle">上一步</button>  </div>
-
-      <textarea v-model="code" name="" id="" cols="30" rows="10"></textarea>
-
+        @click="prevCycle">上一步</button> </div>
+    <p>关于机器的细节，参考
+      <a class="text-blue-400 underline"
+        href="https://github.com/MarybethGasman/scoreboarding/blob/master/src/vm/machine.js#L1-L25">machine.js</a> 以及
+      <a class="text-blue-400 underline" href="https://github.com/MarybethGasman/scoreboarding/blob/master/src/App.vue#L29-L39">流水线循环</a>
+    </p>
+    <textarea v-model="code" name="" id="" cols="30" rows="10"></textarea>
     <table class="border-collapse table-auto w-full text-sm">
       <thead>
         <tr>
@@ -77,8 +80,7 @@ const nextCycle = () => {
           <td class="border-b border-slate-100 dark:border-slate-700 p-2 pl-8 text-slate-500 dark:text-slate-400">{{ i }}
           </td>
           <td v-for="sv, j in fullCycleView[cycleView][index]"
-            class="border-b border-slate-100 dark:border-slate-700 p-2 text-slate-500 dark:text-slate-400">{{ j === 2 ? sv
-              + time.get(instructions[index].split(' ')[0]) - 1 : sv }}</td>
+            class="border-b border-slate-100 dark:border-slate-700 p-2 text-slate-500 dark:text-slate-400">{{ sv }}</td>
         </tr>
       </tbody>
     </table>
