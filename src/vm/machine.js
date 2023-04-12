@@ -67,21 +67,11 @@ export let istatesfinished = new Array(10).fill(0)
 // 3 除法单元
 export let functionUnitStates = []
 
-// 寄存器值是否可读
-let readReady = new Array(15).fill(true)
-
-// 寄存器值是否可写
-let writeReady = new Array(15).fill(true)
-
 // 下一个将要issue的指令
 let next = 0;
 
-// 指令在当前周期有没有被操作过
-let dirty = []
 
-
-
-// 一些未来周期的修改iSatate的任务
+// 一些未来周期的修改istatesfinished的任务
 let iStatePendingJob = []
 
 export function fetch(code) {
