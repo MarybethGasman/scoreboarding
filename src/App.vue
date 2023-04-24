@@ -1,13 +1,8 @@
 <script setup>
 import { reactive, ref, watch } from 'vue';
-import { time, doPendingJobs, instructions, functionUnitStates, istates, decode, execute, print, fetch, issue, writeback } from './vm/machine.js';
+import { functionUnitStates, readOperand, execute, issue, writeback } from './vm/machine.js';
 
 let cycle = 0
-let oldIStates = [...istates];
-let istatesView = []
-
-let fullCycleView = [[]]
-let fullFuctionStateView = [[]]
 let cycleView = ref(0)
 
 let code = ref(`
@@ -18,40 +13,77 @@ SUB R8 R6 R2
 DIV R10 R0 R6
 ADD R6 R8 R2
 `)
-fetch(code.value)
+// 指令队列
+let instructions = code.value.split('\n').filter(s => s.length !== 0)
+
 watch(code, (newV, oldV) => {
-  fetch(newV)
+instructions = newV.split('\n').filter(s => s.length !== 0)  
 })
 
 const prevCycle = () => {
   cycleView.value--
 }
+// 执行时间
+let time = new Map();
+time.set('LD', 1)
+time.set('ADD', 2)
+time.set('MUL', 10)
+time.set('DIV', 40)
+time.set('SUB', 2)
+
+let next = 0
+let roJobs = []
+let executeJobs = []
+let wbJobs = []
+let futureCycleJobs = []
+const doFutureCycleJobs = () => {
+  futureCycleJobs
+  .filter(f => f.remain === 1)
+  .forEach(future => {
+    future.queue.push(future.job)
+  })
+
+  futureCycleJobs = futureCycleJobs.filter(f => f.remain > 1)
+  futureCycleJobs = futureCycleJobs.map(f => {
+    f.remain--
+    return f
+  })
+}
 const nextCycle = () => {
   cycle++
-  doPendingJobs()
-  try {
-    issue()
-  } catch (error) {
-    console.log(error, "程序结束", cycle);
+  doFutureCycleJobs()
+  if(issue(instructions[next]) !== undefined) {
+    futureCycleJobs.push({
+      queue: roJobs,
+      remain: 1,
+      job: instructions[next],
+    })
+    next++
   }
-  decode()
-  execute()
-  writeback()
-  oldIStates.forEach((v, i) => {
-    if (istates[i] === v) {
-      return
-    }
-    if (istatesView[i] === undefined) {
-      istatesView[i] = []
-    }
-    istatesView[i].push(cycle)
-    // console.log(instructions[i], cycle, v, istates[i]);
-  })
-  fullCycleView[cycle] = istatesView.map(arr => arr.slice())
-  fullFuctionStateView[cycle] = [...functionUnitStates]
+  let job = readOperand(roJobs[0])
+  if(job !== undefined) {
+    roJobs.shift()
+    futureCycleJobs.push({
+      queue: executeJobs,
+      remain: 1,
+      job: job,
+    })
+  }
+  job = execute(executeJobs[0])
+  if(job !== undefined) {
+    executeJobs.shift()
+    futureCycleJobs.push({
+      queue: wbJobs,
+      remain: time.get(job.split(' ')[0]),
+      job: job,
+    })
+  }
+  job = writeback(wbJobs[0])
+  if(job !== undefined) {
+    wbJobs.shift()
+  }
+  console.log(cycle, functionUnitStates);
   cycleView.value++
-
-  oldIStates = [...istates];
 }
 </script>
 
@@ -59,13 +91,9 @@ const nextCycle = () => {
   <div>
     <div class="text-center text-xl">当前是第 {{ cycleView }} 个周期 <button @click="nextCycle">下一步</button> <button
         @click="prevCycle">上一步</button> </div>
-    <p>关于机器的细节，参考
-      <a class="text-blue-400 underline"
-        href="https://github.com/MarybethGasman/scoreboarding/blob/master/src/vm/machine.js#L1-L25">machine.js</a> 以及
-      <a class="text-blue-400 underline" href="https://github.com/MarybethGasman/scoreboarding/blob/master/src/App.vue#L29-L39">流水线循环</a>
-    </p>
-    <textarea v-model="code" name="" id="" cols="30" rows="10"></textarea>
-    <table class="border-collapse table-auto w-full text-sm">
+
+    <!-- <textarea v-model="code" name="" id="" cols="30" rows="10"></textarea> -->
+    <!-- <table class="border-collapse table-auto w-full text-sm">
       <thead>
         <tr>
           <th class="border-b  font-semibold p-4 pl-8 pt-0 pb-3 text-left">指令</th>
@@ -83,9 +111,9 @@ const nextCycle = () => {
             class="border-b border-slate-100 dark:border-slate-700 p-2 text-slate-500 dark:text-slate-400">{{ sv }}</td>
         </tr>
       </tbody>
-    </table>
+    </table> -->
 
-    <ul class="text-xl">
+    <!-- <ul class="text-xl">
       <li v-for="f in fullFuctionStateView[cycleView].filter(f => f !== undefined)">
         {{ 'busy' }}
         {{ f.op }}
@@ -93,7 +121,7 @@ const nextCycle = () => {
         {{ f.src1 }}
         {{ f.src2 }}
       </li>
-    </ul>
+    </ul> -->
 
   </div>
 </template>
