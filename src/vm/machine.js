@@ -72,7 +72,7 @@ let next = 0;
 
 
 // 一些未来周期的修改istatesfinished的任务
-let iStatePendingJob = []
+export let iStateFinishedPendingJob = []
 
 export function fetch(code) {
     const line = code.split('\n').filter(s => s.length !== 0)
@@ -95,7 +95,6 @@ export function issue() {
         return
     }
     let [op, dst, src1, src2] = i.split(' ')
-
     switch (op) {
         //整数单元
         case 'LD':
@@ -171,7 +170,7 @@ export function issue() {
             break;
     }
     istates[next] = 1
-    iStatePendingJob.push({
+    iStateFinishedPendingJob.push({
         iindex: next,
         remain: 1,
         istate: 1,
@@ -187,7 +186,6 @@ time.set('DIV', 40)
 time.set('SUB', 2)
 export function decode() {
     // 找到所有可以进行decode的指令
-    // console.log("decode" , istates);
     const set = istatesfinished.map((v, i) => {
         if (v === 1) {
             return i
@@ -195,25 +193,16 @@ export function decode() {
         return -1
     }).filter(v => v >= 0)
     set.forEach((j) => {
-        const readR = []
-
-        istatesfinished.map((v, i) => {
-            if (v < 4 && i < j) {
-                return i
-            }
-            return -1
-        }).filter(v => v >= 0).forEach(i => {
-            const [op, dst, src1, src2] = instructions[i].split(' ')
-            readR.push(dst)
-        })
-
         let [op, dst, src1, src2] = instructions[j].split(' ')
-        if (readR.includes(src1) || readR.includes(src2)) {
+        if (instructions.filter((_, i) => i < j && istatesfinished[i] < 4)
+            .filter(istruction => {
+                let [opPrev, dstPrev, src1Prev, src2Prev] = istruction.split(' ')
+                return src1 === dstPrev || src2 === dstPrev
+            }).length > 0) {
             return
         }
-        // 下一个状态
         istates[j] = 2
-        iStatePendingJob.push({
+        iStateFinishedPendingJob.push({
             iindex: j,
             remain: 1,
             istate: 2,
@@ -233,12 +222,12 @@ export function execute() {
     }).filter(v => v >= 0)
 
     set.forEach(i => {
-        if(iStatePendingJob.map(v => v.iindex).includes(i)) {
+        if (iStateFinishedPendingJob.map(v => v.iindex).includes(i)) {
             return
         }
         const [op, dst, src1, src2] = instructions[i].split(' ')
         istates[i] = 3
-        iStatePendingJob.push({
+        iStateFinishedPendingJob.push({
             iindex: i,
             remain: time.get(op),
             istate: 3,
@@ -258,25 +247,13 @@ export function writeback() {
 
 
     set.forEach(j => {
-        const readR = []
-
-        istatesfinished.map((v, i) => {
-            if (v === 1 && i < j) {
-                return i
-            }
-            return -1
-        }).filter(v => v >= 0).forEach(i => {
-            const [op, dst, src1, src2] = instructions[i].split(' ')
-            if (src1[0] === 'R') {
-                readR.push(+src1[1])
-            }
-            if (src2 !== undefined && src2[0] === 'R') {
-                readR.push(+src2[1])
-            }
-        })
 
         let [op, dst, src1, src2] = instructions[j].split(' ')
-        if (readR.includes(+dst[1])) {
+        if (instructions.filter((_, i) => i < j && istatesfinished[i] < 2)
+            .filter(istruction => {
+                let [opPrev, dstPrev, src1Prev, src2Prev] = istruction.split(' ')
+                return src1Prev === dst || src2Prev === dst
+            }).length > 0) {
             return
         }
         switch (op) {
@@ -358,7 +335,7 @@ export function writeback() {
                 break;
         }
         istates[j] = 4
-        iStatePendingJob.push({
+        iStateFinishedPendingJob.push({
             iindex: j,
             remain: 1,
             istate: 4,
@@ -367,11 +344,11 @@ export function writeback() {
 }
 
 export function doPendingJobs() {
-    iStatePendingJob.filter(j => j.remain === 1).forEach(j => {
+    iStateFinishedPendingJob.filter(j => j.remain === 1).forEach(j => {
         istatesfinished[j.iindex] = j.istate
     })
 
-    iStatePendingJob = iStatePendingJob.filter(j => j.remain > 1).map(j => {
+    iStateFinishedPendingJob = iStateFinishedPendingJob.filter(j => j.remain > 1).map(j => {
         j.remain--
         return j
     })
