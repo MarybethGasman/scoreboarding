@@ -105,11 +105,7 @@ const nextCycle = () => {
       wbJobs.splice(index, 1);
     }
   })
-  // console.log(cycle, functionUnitStates);
   fullState.push(JSON.parse(JSON.stringify(state)))
-  // if(cycleView.value === fullState.length - 1) {
-  //   fullState.push(fullState[fullState.length - 1])
-  // }
 
   cycleView.value++
 }
